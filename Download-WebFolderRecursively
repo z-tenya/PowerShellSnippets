@@ -1,0 +1,28 @@
+Function Download-WebFolderRecursively {
+    [CmdletBinding()]
+    Param (
+        [string]$Uri,
+        [string]$OutFolder
+    )
+
+    Write-Verbose "Download from $Uri to $OutFolder"
+
+    md -Force $OutFolder | Write-Verbose
+    $hostUri = "$(([System.Uri]"$Uri").Scheme)://$(([System.Uri]"$Uri").Host)"    
+    $links = Invoke-WebRequest -Uri $Uri -Verbose:$false | Select-Object -ExpandProperty links  | Select href -Skip 1
+
+    foreach ($link in $links){
+        $fileUri = $hostUri + $link.href
+        if ($fileUri -like "*/"){ 
+            $subFolderName = $fileUri.TrimEnd('/')
+            $subFolderName = $subFolderName.Substring($subFolderName.LastIndexOf("/")+1)
+            Download-WebFolderRecursively -Uri $fileUri -OutFolder "$OutFolder\$subFolderName\"
+        }
+        else {
+            $fileName=$fileUri.Substring($fileUri.LastIndexOf("/") + 1)
+            $outFile = "$OutFolder\$fileName"
+            Write-Verbose "Download to $outFile"
+            Invoke-WebRequest -Uri $fileUri -OutFile $outFile
+        }
+    }
+}
